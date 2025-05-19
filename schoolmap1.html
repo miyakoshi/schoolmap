@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>施設マッププロット</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 100vh; width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 地図を初期化
+        var map = L.map('map').setView([35.68, 139.76], 12); // 東京周辺
+
+        // OpenStreetMapタイルレイヤー追加
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // GeoJSONファイルを読み込み表示
+        fetch('P29-23_13.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    onEachFeature: function (feature, layer) {
+                        var props = feature.properties;
+                        var popupContent = '<strong>' + props.P29_004 + '</strong><br>' +
+                                           '住所: ' + props.P29_005 + '<br>' +
+                                           '種別コード: ' + props.P29_003;
+                        layer.bindPopup(popupContent);
+                    }
+                }).addTo(map);
+            })
+            .catch(err => console.error('GeoJSON読み込みエラー:', err));
+    </script>
+</body>
+</html>
