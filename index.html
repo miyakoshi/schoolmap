@@ -6,37 +6,101 @@
     <title>施設マッププロット</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        #map { height: 100vh; width: 100%; }
+        #map { height: 90vh; width: 100%; }
+        #controls { padding: 10px; }
     </style>
 </head>
 <body>
+    <div id="controls">
+        <label>表示する施設種別：</label>
+        <select id="categoryFilter" multiple>
+            <option value="16001">小学校</option>
+            <option value="16002">中学校</option>
+            <option value="16003">中等教育学校</option>
+            <option value="16004">高等学校</option>
+            <option value="16005">高等専門学校</option>
+            <option value="16006">短期大学</option>
+            <option value="16007">大学</option>
+            <option value="16011">幼稚園</option>
+            <option value="16012">特別支援学校</option>
+            <option value="16013">幼保連携型認定こども園</option>
+            <option value="16014">義務教育学校</option>
+            <option value="16015">各種学校</option>
+            <option value="16016">専修学校</option>
+        </select>
+        <button onclick="updateMap()">更新</button>
+    </div>
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 地図を初期化
-        var map = L.map('map').setView([35.68, 139.76], 12); // 東京周辺
+        const categoryMap = {
+            "16001": { name: "小学校", color: "blue" },
+            "16002": { name: "中学校", color: "green" },
+            "16003": { name: "中等教育学校", color: "purple" },
+            "16004": { name: "高等学校", color: "orange" },
+            "16005": { name: "高等専門学校", color: "red" },
+            "16006": { name: "短期大学", color: "pink" },
+            "16007": { name: "大学", color: "darkred" },
+            "16011": { name: "幼稚園", color: "gold" },
+            "16012": { name: "特別支援学校", color: "brown" },
+            "16013": { name: "幼保連携型認定こども園", color: "teal" },
+            "16014": { name: "義務教育学校", color: "cyan" },
+            "16015": { name: "各種学校", color: "gray" },
+            "16016": { name: "専修学校", color: "black" }
+        };
 
-        // OpenStreetMapタイルレイヤー追加
+        var map = L.map('map').setView([35.68, 139.76], 12);
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // GeoJSONファイルを読み込み表示
+        let geoJsonLayer;
+        let geoJsonData;
+
         fetch('P29-23_13.geojson')
             .then(response => response.json())
             .then(data => {
-                L.geoJSON(data, {
-                    onEachFeature: function (feature, layer) {
-                        var props = feature.properties;
-                        var popupContent = '<strong>' + props.P29_004 + '</strong><br>' +
-                                           '住所: ' + props.P29_005 + '<br>' +
-                                           '種別コード: ' + props.P29_003;
-                        layer.bindPopup(popupContent);
-                    }
-                }).addTo(map);
+                geoJsonData = data;
+                updateMap();
             })
             .catch(err => console.error('GeoJSON読み込みエラー:', err));
+
+        function updateMap() {
+            if (geoJsonLayer) {
+                map.removeLayer(geoJsonLayer);
+            }
+
+            const selectedCategories = Array.from(document.getElementById("categoryFilter").selectedOptions).map(o => o.value);
+
+            geoJsonLayer = L.geoJSON(geoJsonData, {
+                filter: function (feature) {
+                    return selectedCategories.length === 0 || selectedCategories.includes(feature.properties.P29_003);
+                },
+                pointToLayer: function (feature, latlng) {
+                    const category = feature.properties.P29_003;
+                    const markerColor = categoryMap[category]?.color || "blue";
+                    return L.circleMarker(latlng, {
+                        radius: 6,
+                        fillColor: markerColor,
+                        color: "#000",
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+                },
+                onEachFeature: function (feature, layer) {
+                    var props = feature.properties;
+                    var categoryName = categoryMap[props.P29_003]?.name || "不明";
+                    var popupContent = '<strong>' + props.P29_004 + '</strong><br>' +
+                                       '住所: ' + props.P29_005 + '<br>' +
+                                       '施設種別: ' + categoryName;
+                    layer.bindPopup(popupContent);
+                }
+            }).addTo(map);
+        }
     </script>
 </body>
 </html>
